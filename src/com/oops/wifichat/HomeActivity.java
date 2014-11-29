@@ -1,10 +1,11 @@
 package com.oops.wifichat;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.oops.wifichat.ChatConnection.ConnectionListener;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -35,11 +36,9 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
 
-public class HomeActivity extends Activity implements DeviceActionListener {
+public class HomeActivity extends Activity implements DeviceActionListener, ConnectionListener {
 
 	public static final int SERVER_PORT = 10086;
 	protected static final String TAG = "HOME";
@@ -51,9 +50,6 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 	private Handler mUpdateHandler;
 	private ChatConnection mConnection;
 	
-	private TextView mTxtRegister, mTxtDiscover, mTxtPeer, mTxtConnect, mStatusView;
-	private Button mBtnRegister, mBtnDiscover, mBtnPeer, mBtnConnect, mBtnChat;
-	
 	private DeviceListFragment listFragment;
 	private DeviceDetailFragment detailFragment;
 	
@@ -62,15 +58,13 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_home);
 		
-		initView();
 		listFragment = (DeviceListFragment) getFragmentManager().findFragmentById(R.id.frag_list);
 		detailFragment = (DeviceDetailFragment) getFragmentManager().findFragmentById(R.id.frag_detail);
 		
 		mUpdateHandler = new Handler() {
             @Override
 	        public void handleMessage(Message msg) {
-	            String chatLine = msg.getData().getString("msg");
-					addChatLine(chatLine);
+            	
             }
 		};
 
@@ -98,65 +92,6 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 		
 		receiver = new WiFiDirectBroadcastReceiver();
         registerReceiver(receiver, intentFilter);
-	}
-
-	private void initView() {
-		mBtnRegister = (Button) findViewById(R.id.btn_register);
-		mTxtRegister = (TextView) findViewById(R.id.txt_register);
-		mTxtDiscover = (TextView) findViewById(R.id.txt_discover);
-		mBtnDiscover = (Button) findViewById(R.id.btn_discover);
-		mTxtPeer = (TextView) findViewById(R.id.txt_peer);
-		mBtnPeer = (Button) findViewById(R.id.btn_peer);
-		mTxtConnect = (TextView) findViewById(R.id.txt_connect);
-		mBtnConnect = (Button) findViewById(R.id.btn_connect);
-		mStatusView = (TextView) findViewById(R.id.txt_status);
-		mBtnChat = (Button) findViewById(R.id.btn_chat);
-		mBtnChat.setEnabled(false);
-		mBtnChat.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View paramView) {
-				// TODO Auto-generated method stub
-				Intent intent = new Intent(HomeActivity.this, ChatActivity.class);
-				HomeActivity.this.startActivity(intent);
-			}
-		});
-		
-		
-		mBtnPeer.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View paramView) {
-				discoverPeers();
-			}
-		});
-		
-		mBtnConnect.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View paramView) {
-				// TODO Auto-generated method stub
-				connect();
-			}
-		});
-		
-		mBtnRegister.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View paramView) {
-				// TODO Auto-generated method stub
-				startRegistration();
-			}
-		});
-		
-		mBtnDiscover.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View paramView) {
-				// TODO Auto-generated method stub
-				discoverService();
-			}
-		});
 	}
 
 	@Override
@@ -209,22 +144,9 @@ public class HomeActivity extends Activity implements DeviceActionListener {
         }
     }
 	
-    public void addChatLine(String line) {
-        mStatusView.append("\n" + line);
-    }
-	
-	private void showLog(TextView textView, String log){
-		String txt = textView.getText().toString();
-		textView.setText(log + "\n" + txt);
-	}
-	
-	private void showRegister(String log) {
-		showLog(mTxtRegister, log);
-	}
-	
-    private void startRegistration() {
+    public  void startRegistration() {
         //  Create a string map containing information about your service.
-        Map record = new HashMap();
+        HashMap<String, String> record = new HashMap<String, String>();
         record.put("listenport", String.valueOf(SERVER_PORT));
         record.put("buddyname", "John Doe" + (int) (Math.random() * 1000));
         record.put("available", "visible");
@@ -243,23 +165,18 @@ public class HomeActivity extends Activity implements DeviceActionListener {
             public void onSuccess() {
                 // Command successful! Code isn't necessarily needed here,
                 // Unless you want to update the UI or add logging statements.
-            	showRegister("Success");
+            	Log.d(TAG, "Success");
             }
 
             @Override
             public void onFailure(int arg0) {
                 // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-            	showRegister("failure");
+            	Log.d(TAG, "failure");
             }
         });
     }
     
-    private void showDiscover(String log)
-    {
-    	showLog(mTxtDiscover, log);
-    }
-    
-    private void discoverService() {
+    public void discoverService() {
         DnsSdTxtRecordListener txtListener = new DnsSdTxtRecordListener() {
             /* Callback includes:
              * fullDomain: full domain name: e.g "printer._ipp._tcp.local."
@@ -269,7 +186,7 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 			@Override
 			public void onDnsSdTxtRecordAvailable(String fullDomain, Map<String, String> record, WifiP2pDevice device) {
 				// TODO Auto-generated method stub
-				showDiscover("DnsSdTxtRecord available -" + record.toString());
+				Log.d(TAG, "DnsSdTxtRecord available -" + record.toString());
                 buddies.put(device.deviceAddress, record.get("buddyname"));
 			}
         };
@@ -294,7 +211,7 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 //
 //                    adapter.add(resourceType);
 //                    adapter.notifyDataSetChanged();
-                    showDiscover("onBonjourServiceAvailable " + instanceName);
+                     Log.d(TAG, "onBonjourServiceAvailable " + instanceName);
             }
         };
         
@@ -307,13 +224,13 @@ public class HomeActivity extends Activity implements DeviceActionListener {
                     @Override
                     public void onSuccess() {
                         // Success!
-                    	showDiscover("add request success");
+                    	Log.d(TAG, "add request success");
                     }
 
                     @Override
                     public void onFailure(int code) {
                         // Command failed.  Check for P2P_UNSUPPORTED, ERROR, or BUSY
-                    	showDiscover("add request fail");
+                    	Log.d(TAG, "add request fail");
                     }
                 });
         
@@ -322,7 +239,7 @@ public class HomeActivity extends Activity implements DeviceActionListener {
             @Override
             public void onSuccess() {
                 // Success!
-            	showDiscover("Success");
+            	Log.d(TAG, "Success");
             }
 
             @Override
@@ -331,7 +248,7 @@ public class HomeActivity extends Activity implements DeviceActionListener {
                 if (code == WifiP2pManager.P2P_UNSUPPORTED) {
                     Log.d(TAG, "P2P isn't supported on this device.");
                 }
-                showDiscover("Failure");
+                Log.d(TAG, "Failure");
             }
         });
         
@@ -359,6 +276,7 @@ public class HomeActivity extends Activity implements DeviceActionListener {
     	super.onDestroy();
     	unregisterReceiver(receiver);    	
     	if(mConnection != null) {
+    		mConnection.unregisterListener(this);
     		mConnection.tearDown();
     	}
     }
@@ -407,21 +325,23 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 			
 	        // After the group negotiation, we can determine the group owner.
 			if(info.groupFormed) {
+				if(mConnection != null) {
+					mConnection.unregisterListener(HomeActivity.this);
+				}
 				mConnection = new ChatConnection(mUpdateHandler, HomeActivity.this);
 	    	    ChatApplication app = (ChatApplication) getApplication();
 	    	    app.connection = mConnection;
+	    	    mConnection.registerListener(HomeActivity.this);
 	    	    
 	    	    if (info.groupFormed && info.isGroupOwner) {
 		            // Do whatever tasks are specific to the group owner.
 		            // One common case is creating a server thread and accepting
 		            // incoming connections.
-		        	mBtnChat.setEnabled(true);
 		        } else if (info.groupFormed) {
 		            // The other device acts as the client. In this case,
 		            // you'll want to create a client thread that connects to the group
 		            // owner.
 		        	mConnection.connectToServer(info.groupOwnerAddress, SERVER_PORT);
-		        	mBtnChat.setEnabled(true);
 		        }
 			}
 		}
@@ -542,8 +462,14 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 	@Override
 	public void disconnect() {
 		// TODO Auto-generated method stub
+		runOnUiThread(new Runnable() {
+			
+			@Override
+			public void run() {
+				detailFragment.resetViews();
+			}
+		});
 		
-		detailFragment.resetViews();
 		mConnection.tearDown();
 		mManager.removeGroup(channel, new ActionListener() {
 			
@@ -561,5 +487,14 @@ public class HomeActivity extends Activity implements DeviceActionListener {
 		});
 	}
 
+	@Override
+	public void onConnectionReady() {
+		Intent intent = new Intent(this, ChatActivity.class);
+    	this.startActivity(intent);
+	}
 
+	@Override
+	public void onConnectionDown() {
+		disconnect();
+	}
 }

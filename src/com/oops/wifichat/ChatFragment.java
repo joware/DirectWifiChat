@@ -3,6 +3,8 @@ package com.oops.wifichat;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oops.wifichat.ChatConnection.ConnectionListener;
+
 import android.app.ListFragment;
 import android.content.Context;
 import android.os.Bundle;
@@ -21,7 +23,7 @@ import android.widget.TextView;
 /**
  * chat fragment attached to main activity.
  */
-public class ChatFragment extends ListFragment {
+public class ChatFragment extends ListFragment implements ConnectionListener {
 	private static final String TAG = "ChatFrag";
 	
 	private ArrayList<String> mMessageList = new ArrayList<String>();   // a list of chat msgs.
@@ -58,6 +60,7 @@ public class ChatFragment extends ListFragment {
         };
         ChatApplication application = (ChatApplication) getActivity().getApplication();
         application.connection.setHandler(mUpdateHandler);
+        application.connection.registerListener(this);
             
         return contentView;
     }
@@ -68,6 +71,7 @@ public class ChatFragment extends ListFragment {
     	
     	ChatApplication application = (ChatApplication) getActivity().getApplication();
         application.connection.setHandler(null);
+        application.connection.unregisterListener(this);
     	Log.d(TAG, "onDestroyView: ");
     }
     
@@ -154,4 +158,16 @@ public class ChatFragment extends ListFragment {
             return view;
 		}
     }
+
+	@Override
+	public void onConnectionReady() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onConnectionDown() {
+		// TODO Auto-generated method stub
+		getActivity().finish();
+	}
 }

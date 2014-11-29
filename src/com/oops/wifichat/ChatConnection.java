@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -32,15 +33,23 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class ChatConnection {
+	
+	public interface ConnectionListener{
+		public void onConnectionReady();
+		public void onConnectionDown();
+	}
 
     private Handler mUpdateHandler;
     private ChatServer mChatServer;
     private ChatClient mChatClient;
     private Context mContext;
+    private List<ConnectionListener> mListeners = new ArrayList<ConnectionListener>();
 
     private static final String TAG = "ChatConnection";
 
@@ -57,7 +66,32 @@ public class ChatConnection {
     public void tearDown() {
         mChatServer.tearDown();
         mChatClient.tearDown();
+        isReady = false;
         mContext = null;
+    }
+    
+    public void registerListener(ConnectionListener listener) {
+    	if(!mListeners.contains(listener)) {
+    		mListeners.add(listener);
+    	}
+    }
+    
+    public void unregisterListener(ConnectionListener listener) {
+    	if(mListeners.contains(listener)) {
+    		mListeners.remove(listener);
+    	}
+    }
+    
+    private void onConnectionReady() {
+    	for(ConnectionListener listener: mListeners) {
+    		listener.onConnectionReady();
+    	}
+    }
+    
+    private void onConnectionDown() {
+    	for(ConnectionListener listener: mListeners) {
+    		listener.onConnectionDown();
+    	}
     }
     
     public void setHandler(Handler handler) {
@@ -218,8 +252,7 @@ public class ChatConnection {
                     mRecThread = new Thread(new ReceivingThread());
                     mRecThread.start();
                     
-                    Intent intent = new Intent(mContext, ChatActivity.class);
-    	        	mContext.startActivity(intent);
+    	        	onConnectionReady();
     	        	isReady = true;
 
                 } catch (UnknownHostException e) {
@@ -262,6 +295,7 @@ public class ChatConnection {
                     }
                     input.close();
 
+                    onConnectionDown();
                 } catch (IOException e) {
                     Log.e(CLIENT_TAG, "Server loop error: ", e);
                 }

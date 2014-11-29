@@ -127,35 +127,6 @@ public class DeviceDetailFragment extends Fragment {
         }
     }
 
-    /**
-     * p2p connection setup, proceed to setup socket connection.
-     */
-    public void onConnectionInfoAvailable(final WifiP2pInfo info) {
-        if (progressDialog != null && progressDialog.isShowing()) {
-            progressDialog.dismiss();
-        }
-        this.info = info;
-        this.getView().setVisibility(View.VISIBLE);
-
-        // The owner IP is now known.
-        TextView view = (TextView) mContentView.findViewById(R.id.group_owner);
-        view.setText(getResources().getString(R.string.group_owner_text)
-                + ((info.isGroupOwner == true) ? getResources().getString(R.string.yes)
-                        : getResources().getString(R.string.no)));
-
-        // InetAddress from WifiP2pInfo struct.
-        view = (TextView) mContentView.findViewById(R.id.device_info);
-        view.setText("Group Owner IP - " + info.groupOwnerAddress.getHostAddress());
-
-        Log.d(TAG, "onConnectionInfoAvailable: " + info.groupOwnerAddress.getHostAddress());
-        if (info.groupFormed && info.isGroupOwner) {
-            //new FileServerAsyncTask(getActivity(), mContentView.findViewById(R.id.status_text)).execute();
-        	Log.d(TAG, "onConnectionInfoAvailable: device is groupOwner: startSocketServer done ");
-        } else if (info.groupFormed) {
-        	Log.d(TAG, "onConnectionInfoAvailable: device is client, connect to group owner: startSocketClient done ");
-            ((TextView) mContentView.findViewById(R.id.status_text)).setText(getResources().getString(R.string.client_text));
-        }
-    }
 
     /**
      * Updates the UI with device data
